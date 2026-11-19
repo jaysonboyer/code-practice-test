@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Run the practice tasks.
+"""Run the practice tasks. Run this inside the python container:
 
-  python3 task-runner.py task1         run the Task 1 tests
-  python3 task-runner.py seed [FILE]   load test data into the products table
-  python3 task-runner.py sql [FILE]    load test data, then run the Task 3 solution
-  python3 task-runner.py               task1, then sql with the default data
+  docker compose up -d
+  docker compose exec python bash
 
-FILE is a test-data file inside task3/ (default: task3/TestData/test-input-01.py).
+  python task-runner.py task1         run the Task 1 tests
+  python task-runner.py seed [FILE]   load test data into the products table
+  python task-runner.py task3 [FILE]  load test data, then run the Task 3 solution (also: sql)
+  python task-runner.py               task1, then task3 with the default data
+
+FILE is a test-data file (default: task_3_and_4/TestData/test-input-01.py).
 """
 import argparse
 import subprocess
@@ -14,7 +17,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-DEFAULT_DATA = ROOT / "task3/TestData/test-input-01.py"
+DEFAULT_DATA = ROOT / "task_3_and_4/TestData/test-input-01.py"
 
 
 def run(*cmd):
@@ -22,22 +25,21 @@ def run(*cmd):
 
 
 def task1(_args):
-    run(sys.executable, "task1/solution.py")
+    run(sys.executable, "task_1_and_2/solution.py")
 
 
 def seed(args):
-    # The seed container sees task3/ as /task3 and works from there.
-    try:
-        data = Path(args.file).resolve().relative_to(ROOT / "task3")
-    except ValueError:
-        sys.exit(f"{args.file} must be inside task3/")
-    run("docker", "compose", "run", "--rm", "seed", "python", "seed.py", str(data))
+    task3("seed", args)
 
 
 def sql(args):
-    seed(args)
-    run("docker", "compose", "exec", "-T", "postgres", "psql", "-U", "postgres", "codetest",
-        "-v", "ON_ERROR_STOP=1", "-f", "/task3/TestData/solution.sql-postgres")
+    task3("sql", args)
+
+
+def task3(command, args):
+    # Resolve FILE here: it is relative to where the user ran this script.
+    run(sys.executable, "task_3_and_4/execute.py", command,
+        str(Path(args.file).resolve()))
 
 
 def everything(args):
@@ -49,7 +51,7 @@ parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.R
 parser.set_defaults(func=everything, file=DEFAULT_DATA)
 commands = parser.add_subparsers(title="commands")
 commands.add_parser("task1", help="run the Task 1 tests").set_defaults(func=task1)
-for name, func, help in [("seed", seed, "load test data"), ("sql", sql, "load test data and run the Task 3 query")]:
+for name, func, help in [("seed", seed, "load test data"), ("task3", sql, "load test data and run the Task 3 query"), ("sql", sql, "same as task3")]:
     p = commands.add_parser(name, help=help)
     p.add_argument("file", nargs="?", default=DEFAULT_DATA)
     p.set_defaults(func=func)

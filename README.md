@@ -1,32 +1,39 @@
 # Code Test
 
-Four coding-test tasks. The task descriptions are in the `TASK-0*.md` files.
+Four coding-test tasks. Each task folder holds the task descriptions (`TASK-0*.md`), the solution and the written answer: `task_1_and_2/` has Tasks 1 and 2, `task_3_and_4/` has Tasks 3 and 4 (Tasks 2 and 4 are questions about 1 and 3).
 
 | Task | What it asks | Where the work goes |
 |------|--------------|---------------------|
-| [TASK-01](TASK-01.md) | Car Assembly: write `solution(A, B, X, Y)` in Python | `task1/solution.py` |
-| [TASK-02](TASK-02.md) | Explain the time and space complexity of Task 1 and add your own test cases | `task1/complexity-analysis.md`, tests in `task1/solution.py` |
-| [TASK-03](TASK-03.md) | SQL: the most items you can buy for $100 | `task3/TestData/solution.sql-postgres` |
-| [TASK-04](TASK-04.md) | How you would make the Task 3 SQL fast on very large tables | written answer |
+| [TASK-01](task_1_and_2/TASK-01.md) | Car Assembly: write `solution(A, B, X, Y)` in Python | `task_1_and_2/solution.py` |
+| [TASK-02](task_1_and_2/TASK-02.md) | Explain the time and space complexity of Task 1 and add your own test cases | `task_1_and_2/complexity-analysis.md`, tests in `task_1_and_2/solution.py` |
+| [TASK-03](task_3_and_4/TASK-03.md) | SQL: the most items you can buy for $100 | `task_3_and_4/TestData/solution.sql-postgres` |
+| [TASK-04](task_3_and_4/TASK-04.md) | How you would make the Task 3 SQL fast on very large tables | `task_3_and_4/sql-performance.md` |
 
 ## Running everything: `task-runner.py`
 
-One script runs all the tasks. Run it from the project folder:
+The Python runs inside a Docker container, so the only thing the Mac needs is Docker. Start the containers, then open a terminal in the `python` one:
 
 ```sh
-python3 task-runner.py                                     # Task 1 tests, then seed + run the Task 3 SQL
-python3 task-runner.py task1                               # Task 1 tests only
-python3 task-runner.py seed                                # load task3/TestData/test-input-01.py into the products table
-python3 task-runner.py sql                                 # load test-input-01.py, then run your Task 3 query
-python3 task-runner.py sql task3/TestData/test-input-02.py # same, with another test-data file
-python3 task-runner.py --help                              # list the commands
+docker compose up -d              # start Postgres and the python container
+docker compose exec python bash   # open a terminal inside the python container; leave it with exit
 ```
 
-It needs `python3` and Docker. The SQL commands start Postgres in Docker for you (see [Running the SQL](#running-the-sql-task-3)). It stops with an error if a test fails, the data file is missing, or your SQL has an error.
+Inside that terminal the project folder is `/app` and the command is `python`:
+
+```sh
+python task-runner.py                                     # Task 1 tests, then seed + run the Task 3 SQL
+python task-runner.py task1                               # Task 1 tests only
+python task-runner.py seed                                # load task_3_and_4/TestData/test-input-01.py into the products table
+python task-runner.py task3                               # Task 3: load test-input-01.py, then run your query (same as sql)
+python task-runner.py task3 task_3_and_4/TestData/test-input-02.py # same, with another test-data file
+python task-runner.py --help                              # list the commands
+```
+
+It stops with an error if a test fails, the data file is missing, or your SQL has an error. Files you edit on the Mac change inside the container straight away, because the project folder is shared with it.
 
 ## Running Python
 
-On this Mac the command is `python3`. Plain `python` is not installed. To check the version:
+Run these in the python container's terminal (see above). Both `python` and `python3` work there. On the Mac itself only `python3` is installed, and it can run the Task 1 file but not the database commands. To check the version:
 
 ```sh
 python3 --version
@@ -41,7 +48,7 @@ cd ~/repos/code-practice-test
 ### Running a script
 
 ```sh
-python3 task1/solution.py
+python3 task_1_and_2/solution.py
 ```
 
 This runs the file from top to bottom, including the `assert` tests at the bottom (the same as `python3 task-runner.py task1`). To try other inputs, either add lines to that test block or call the function from the terminal.
@@ -58,7 +65,7 @@ The `if __name__ == "__main__":` line means "only run this when the file is run 
 **Option 2: call the function straight from the terminal without editing the file:**
 
 ```sh
-python3 -c "import sys; sys.path.insert(0, 'task1'); from solution import solution; print(solution([1, 6, 2], [3, 2, 5], 2, 1))"
+python3 -c "import sys; sys.path.insert(0, 'task_1_and_2'); from solution import solution; print(solution([1, 6, 2], [3, 2, 5], 2, 1))"
 ```
 
 ### Checking answers with `assert`
@@ -81,15 +88,15 @@ The solution must run on **PostgreSQL 9.4**. `docker-compose.yml` runs it in Doc
 
 | Service | What it does |
 |---------|--------------|
-| `postgres` | PostgreSQL 9.4 with a database called `codetest`. On first start `task3/init.sql` creates the empty `products` table. Host port **5433** (not 5432, so it doesn't clash with a Homebrew Postgres). |
-| `seed` | A Python container that runs `task3/seed.py`: empties `products`, then loads a test-data file. Runs once on `docker compose up`, then exits. |
+| `postgres` | PostgreSQL 9.4 with a database called `codetest`. On first start `task_3_and_4/init.sql` creates the empty `products` table. Host port **5433** (not 5432, so it doesn't clash with a Homebrew Postgres). |
+| `python` | Python 3.14, built from the `Dockerfile`, with the project folder shared at `/app`. It stays running so you can open a terminal in it and run the scripts. |
 
-The easy way is `python3 task-runner.py sql`. The same steps by hand:
+The easy way is `python task-runner.py sql` in the python container. That calls `task_3_and_4/execute.py`, which runs `task_3_and_4/seed.py` (empties `products`, then loads a test-data file) and then runs your query. `execute.py` also runs on its own (`python task_3_and_4/execute.py sql`).
+
+To work with the database directly, from the Mac:
 
 ```sh
-docker compose up -d                                       # start Postgres and seed it with test-input-01.py
-docker compose run --rm seed python seed.py TestData/test-input-02.py   # re-seed from another file (path is inside task3/)
-docker compose exec postgres psql -U postgres codetest -f /task3/TestData/solution.sql-postgres   # run your query
+docker compose exec postgres psql -U postgres codetest -f /task_3_and_4/TestData/solution.sql-postgres   # run your query
 docker compose exec postgres psql -U postgres codetest     # interactive SQL prompt; exit with \q
 docker compose down                                        # stop (add -v to also delete the data)
 ```
@@ -97,6 +104,6 @@ docker compose down                                        # stop (add -v to als
 Notes:
 
 - `test-input-01.py` contains SQL `insert` statements, not Python, despite the `.py` extension. The seed reads it as SQL.
-- Inside the containers `task3/` is mounted at `/task3`.
+- Inside the `postgres` container `task_3_and_4/` is mounted at `/task_3_and_4`. Inside the `python` container the whole project is at `/app`.
 - The 9.4 `psql` runs only **one** `-c` or `-f` per call. Give it two and it silently runs just the last.
-- The `seed` container downloads `psycopg2-binary` each time it runs, so it needs internet access.
+- The `python` container is built from the `Dockerfile`, which installs `psycopg2-binary`. The first `docker compose up -d` builds it (needs internet once). After changing the `Dockerfile` run `docker compose up -d --build`.

@@ -2,7 +2,7 @@
 
 The question: given a `products` table (`name`, `price`, `quantity`), what is the largest number of items you can buy while spending at most $100? See [TASK-03.md](TASK-03.md).
 
-The solution is in [`task3/TestData/solution.sql-postgres`](task3/TestData/solution.sql-postgres) and runs on PostgreSQL 9.4.
+The solution is in [`task_3_and_4/TestData/solution.sql-postgres`](TestData/solution.sql-postgres) and runs on PostgreSQL 9.4.
 
 ## The idea: buy the cheapest items first
 
@@ -79,10 +79,10 @@ It doesn't. After the partly bought row, the money actually left is less than th
 
 | Case | Example | Result |
 |------|---------|-------:|
-| Example 1, money runs out partway through a row | [`test-input-01.py`](task3/TestData/test-input-01.py) | 32 |
-| Empty table | [`test-input-02.py`](task3/TestData/test-input-02.py) | 0 (thanks to `coalesce`) |
-| Some items cost more than $100 | [`test-input-03.py`](task3/TestData/test-input-03.py): Backpack $99, Jacket $101 | 1 |
-| Everything is affordable | [`test-input-04.py`](task3/TestData/test-input-04.py) | 5 |
+| Example 1, money runs out partway through a row | [`test-input-01.py`](TestData/test-input-01.py) | 32 |
+| Empty table | [`test-input-02.py`](TestData/test-input-02.py) | 0 (thanks to `coalesce`) |
+| Some items cost more than $100 | [`test-input-03.py`](TestData/test-input-03.py): Backpack $99, Jacket $101 | 1 |
+| Everything is affordable | [`test-input-04.py`](TestData/test-input-04.py) | 5 |
 
 ## PostgreSQL 9.4 compatibility
 
@@ -96,5 +96,5 @@ Postgres sorts the rows once for the window function: O(N log N) for N products.
 
 ```sh
 python3 task-runner.py sql                                  # example 1
-python3 task-runner.py sql task3/TestData/test-input-03.py  # any other test file
+python3 task-runner.py sql task_3_and_4/TestData/test-input-03.py  # any other test file
 ```
