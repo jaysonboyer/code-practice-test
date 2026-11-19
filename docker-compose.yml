@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:9.4
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: codetest
+    ports:
+      - "5433:5432" # 5433 on the host so it doesn't clash with Homebrew postgres@14
+    volumes:
+      - ./task3/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./task3:/task3:ro
+    healthcheck:
+      # -h localhost: the image's first-run setup server only listens on a socket, so this waits for the real one
+      test: ["CMD", "pg_isready", "-h", "localhost", "-U", "postgres", "-d", "codetest"]
+      interval: 2s
+      retries: 30
+
+  seed:
+    image: python:3.14-slim
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/codetest
+    volumes:
+      - ./task3:/task3:ro
+    working_dir: /task3
+    # entrypoint installs the driver, then runs the command, so `docker compose run seed python seed.py <file>` works too
+    entrypoint: ["sh", "-c", "pip install -q --root-user-action=ignore --disable-pip-version-check psycopg2-binary && exec \"$$@\"", "--"]
+    command: ["python", "seed.py", "TestData/test-input-01.py"]

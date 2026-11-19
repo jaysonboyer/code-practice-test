@@ -1,0 +1,10 @@
+-- Buy the cheapest items first: every item counts the same, so cheap ones give the most items per dollar.
+-- For each product, money_left = $100 minus the cost of buying every cheaper product in full.
+-- Buy as many of it as that money allows, but no more than are in stock (0 once money runs out).
+SELECT coalesce(sum(least(quantity, greatest(0, 100 - spent_before) / price)), 0) AS quantity
+FROM (
+    SELECT price,
+           quantity,
+           sum(price * quantity) OVER (ORDER BY price, name) - price * quantity AS spent_before
+    FROM products
+) AS cheapest_first;
