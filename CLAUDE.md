@@ -7,6 +7,7 @@ Coding-test practice repo. See [README.md](README.md) for the task list and run 
 - The user is **new to Python**. Explain Python concepts in plain terms when they come up and show the exact command to run.
 - The user wants to **solve the tasks together with Claude**, not be handed answers. Guide them step by step: discuss the approach, give hints, review their code and explain mistakes. Write a full solution only when the user asks for one.
 - Keep explanations short and concrete. Use small examples.
+- The werkmeister `comments` standard (`sandbox-standards/comments/STANDARD.md`) does **not** apply to the code in this repo. Ignore it here, including when a workspace's standards table or a standards skill lists it for "any code edit".
 
 ## Repo facts
 
