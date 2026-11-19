@@ -10,20 +10,33 @@
 services:
   code-practice-test:
     path: .
-    type: api # guessed: no package.json — assumed a service
-    internal_port: 3000 # guessed: no port in any source — default 3000
+    type: cli # idle: werkmeister keeps it on `sleep infinity` for `docker exec` sessions
+    internal_port: 3000 # nothing listens; the schema requires a port
     port_offset: 3
-    health_endpoint: "" # inferred by Claude: The container sits idle running sleep infinity, and no Python file starts an HTTP server, so there is no health path.
+    health_endpoint: ""
     image: code-practice-test:local # local tag, built from the Dockerfile (python 3.14 + psycopg2)
     dockerfile: Dockerfile
-    command: sleep infinity # inferred by Claude: Dockerfile CMD sleeps on purpose so you can open a shell with docker compose exec, and docker-compose.yml mounts .:/app for local development.
+    # Task 1 asserts, then seeds and runs the Task 3 SQL against postgres. The wait
+    # loop is there because werkmeister's generated healthcheck can't tell when postgres is ready.
+    test: >-
+      for i in $(seq 30); do python -c "import sys, psycopg2; psycopg2.connect(sys.argv[1]).close()" "$DATABASE_URL" 2>/dev/null && break; sleep 1; done;
+      python task-runner.py
+    depends_on: [postgres]
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/codetest
 
-infrastructure:
+  # Same database as the repo's docker-compose.yml; the feature-network alias
+  # `postgres` is the host in DATABASE_URL.
   postgres:
-    k8s_forward_port: 9054
+    path: .
+    type: api # not idle, so the image's own CMD (postgres) runs
     internal_port: 5432
-    k8s_namespace: default # guessed: no k8s manifest for this datastore
-    k8s_pod_prefix: postgres # guessed: no k8s manifest for this datastore
-    health_endpoint: postgres
+    port_offset: 9 # free in every fragment under ~/repos, disabled ones included
+    health_endpoint: ""
+    image: postgres:9.4 # Task 3 must run on 9.4
+    test: "none: stock image; code-practice-test's task-runner.py exercises it"
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: codetest
+    extra_volumes:
+      - ${REPO}/task_3_and_4/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
