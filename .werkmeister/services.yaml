@@ -40,3 +40,9 @@ services:
       POSTGRES_DB: codetest
     extra_volumes:
       - ${REPO}/task_3_and_4/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+repo:
+  # Tracker components, one per ticket, used by backlog triage to group tickets (one workspace and PR per group).
+  components:
+    task-1-2: task_1_and_2 files, the Task 1 solution and its complexity analysis
+    task-3-4: task_3_and_4 files, the Postgres query, the SQL performance doc and test data
