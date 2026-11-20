@@ -68,12 +68,12 @@ The design choice that buys this: a table `dp[position][line]` would also give O
 ## Hotspots and benchmarks
 
 - `solution` has no hotspot: one linear pass, no nested loops, no sorting, no recursion.
-- The test block has the only expensive code, on purpose: `brute_force` is O(2^N · N). It runs on N ≤ 8 only (at most 256 routes), 500 times, which takes well under a second. Never call it on real input.
+- The tests hold the only expensive code, on purpose: `brute_force` in `test_solution.py` is O(2^N · N). It runs on N ≤ 8 only (at most 256 routes), 500 times, which takes well under a second. Never call it on real input.
 - The "largest input" test is the benchmark: it builds two 100,000-element lists (test-only O(N) memory) and confirms the full-size run finishes and returns 2,000,000,000.
 
 ## Test cases
 
-The tests are the `if __name__ == "__main__":` block at the bottom of `solution.py`. Run them with `python3 task_1_and_2/solution.py` (or `python task-runner.py task1` in the container). Each case carries a description, so a failure says which case broke.
+The tests are in [`test_solution.py`](test_solution.py), kept apart so `solution.py` holds only what the grader needs. Run them with `python3 task_1_and_2/test_solution.py` (or `python task-runner.py task1` in the container). Each case carries a description, so a failure says which case broke.
 
 The first four are the examples from TASK-01. The rest are my own:
 

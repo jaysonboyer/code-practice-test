@@ -5,7 +5,7 @@ Four coding-test tasks. Each task folder holds the task descriptions (`TASK-0*.m
 | Task | What it asks | Where the work goes |
 |------|--------------|---------------------|
 | [TASK-01](task_1_and_2/TASK-01.md) | Car Assembly: write `solution(A, B, X, Y)` in Python | `task_1_and_2/solution.py` |
-| [TASK-02](task_1_and_2/TASK-02.md) | Explain the time and space complexity of Task 1 and add your own test cases | `task_1_and_2/complexity-analysis.md`, tests in `task_1_and_2/solution.py` |
+| [TASK-02](task_1_and_2/TASK-02.md) | Explain the time and space complexity of Task 1 and add your own test cases | `task_1_and_2/complexity-analysis.md`, tests in `task_1_and_2/test_solution.py` |
 | [TASK-03](task_3_and_4/TASK-03.md) | SQL: the most items you can buy for $100 | `task_3_and_4/TestData/solution.sql-postgres` |
 | [TASK-04](task_3_and_4/TASK-04.md) | How you would make the Task 3 SQL fast on very large tables | `task_3_and_4/sql-performance.md` |
 
@@ -48,12 +48,12 @@ cd ~/repos/code-practice-test
 ### Running a script
 
 ```sh
-python3 task_1_and_2/solution.py
+python3 task_1_and_2/test_solution.py
 ```
 
-This runs the file from top to bottom, including the `assert` tests at the bottom (the same as `python3 task-runner.py task1`). To try other inputs, either add lines to that test block or call the function from the terminal.
+This runs the Task 1 tests: the file imports `solution` from `solution.py` and checks it with `assert` (the same as `python3 task-runner.py task1`). To try other inputs, either add a case to `test_solution.py`, add a block like this to `solution.py`, or call the function from the terminal.
 
-**Option 1: the test block at the bottom of `solution.py`:**
+**Option 1: a block at the bottom of `solution.py`** (run it with `python3 task_1_and_2/solution.py`):
 
 ```python
 if __name__ == "__main__":
