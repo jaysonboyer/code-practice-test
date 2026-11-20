@@ -1,10 +1,43 @@
--- Buy the cheapest items first: every item counts the same, so cheap ones give the most items per dollar.
--- For each product, money_left = $100 minus the cost of buying every cheaper product in full.
--- Buy as many of it as that money allows, but no more than are in stock (0 once money runs out).
-SELECT coalesce(sum(least(quantity, greatest(0, 100 - spent_before) / price)), 0) AS quantity
-FROM (
+-- Task 3: the most items we can buy with $100 (TASK-03.md).
+-- Walk-through and proof: how-it-works.md. Measurements on a large table: sql-performance.md.
+--
+-- Strategy: every item counts as one, whatever it costs, so each dollar goes to the cheapest
+-- item still in stock. Buy products in price order until the money runs out.
+--
+-- Performance: the answer depends only on the cheapest few products, so read only those.
+--   * Every price is at least $1, so $100 can pay for at most 100 products.
+--     The 101st cheapest product onwards can never get any money.
+--   * A product priced over $100 can never be bought.
+-- So rather than sort the whole table, ask for the 100 cheapest products we can afford.
+-- Postgres then keeps only 100 rows in memory while it scans (a "top-N heapsort"), and with an
+-- index on (price, name) it reads the first 100 index entries and stops, however big the table.
+WITH cheapest_affordable_products AS (
+    SELECT name, price, quantity
+    FROM products
+    WHERE price <= 100       -- over budget on its own: can never be bought
+    ORDER BY price, name     -- cheapest first; name breaks ties so the order is the same every run
+    LIMIT 100                -- $100 budget / $1 lowest possible price = most products that can get money
+),
+
+-- How much money is left when we reach each product, if every cheaper product was bought in full.
+-- This step sorts again, but only the 100 rows above, which costs nothing.
+money_left_per_product AS (
     SELECT price,
            quantity,
-           sum(price * quantity) OVER (ORDER BY price, name) - price * quantity AS spent_before
-    FROM products
-) AS cheapest_first;
+           -- Running total (window function): cost of this product and every cheaper one, in full.
+           -- Subtract this product's own cost to get what was spent before it.
+           100 - (sum(price * quantity) OVER (ORDER BY price, name) - price * quantity) AS money_left
+    FROM cheapest_affordable_products
+),
+
+-- Buy as many as the money left allows, but no more than are in stock.
+-- money_left goes negative once the budget is spent; greatest() turns that into "buy none".
+-- Integer division rounds down, which is what we want: we can't buy part of an item.
+items_bought_per_product AS (
+    SELECT least(quantity, greatest(0, money_left) / price) AS items_bought
+    FROM money_left_per_product
+)
+
+-- sum() of no rows (an empty table) is NULL, so coalesce() makes it 0.
+SELECT coalesce(sum(items_bought), 0) AS quantity
+FROM items_bought_per_product;

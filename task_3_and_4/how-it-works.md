@@ -33,47 +33,65 @@ Total: 30 + 2 + 0 + 0 = **32**.
 
 ## The query
 
+The query is built from named steps (`WITH ... AS (...)`, called CTEs). Each step reads the one before it like a table, and its name says what it holds. The full file, with comments, is [`solution.sql-postgres`](TestData/solution.sql-postgres):
+
 ```sql
-SELECT coalesce(sum(least(quantity, greatest(0, 100 - spent_before) / price)), 0) AS quantity
-FROM (
+WITH cheapest_affordable_products AS (
+    SELECT name, price, quantity
+    FROM products
+    WHERE price <= 100
+    ORDER BY price, name
+    LIMIT 100
+),
+money_left_per_product AS (
     SELECT price,
            quantity,
-           sum(price * quantity) OVER (ORDER BY price, name) - price * quantity AS spent_before
-    FROM products
-) AS cheapest_first;
+           100 - (sum(price * quantity) OVER (ORDER BY price, name) - price * quantity) AS money_left
+    FROM cheapest_affordable_products
+),
+items_bought_per_product AS (
+    SELECT least(quantity, greatest(0, money_left) / price) AS items_bought
+    FROM money_left_per_product
+)
+SELECT coalesce(sum(items_bought), 0) AS quantity
+FROM items_bought_per_product;
 ```
 
-### Inner query: what was spent before each row
+### Step 1, `cheapest_affordable_products`: only the rows that can matter
+
+- `ORDER BY price, name` puts the cheapest first. Sorting by `name` as well as `price` breaks ties. Eraser and Notebook both cost $5; with `name` added each gets its own position, so the order is the same every run. Which of two same-price items comes first does not change the count.
+- `WHERE price <= 100` drops products we could never buy even one of.
+- `LIMIT 100` keeps only the 100 cheapest. Every price is at least $1, so $100 pays for at most 100 items, and so at most 100 products. The 101st cheapest product can never get any money, so dropping it never changes the answer.
+
+The answer does not change with or without the last two lines. They are there for speed on big tables: see [Cost](#cost).
+
+### Step 2, `money_left_per_product`: money left when we reach each product
 
 ```sql
-sum(price * quantity) OVER (ORDER BY price, name) - price * quantity AS spent_before
+100 - (sum(price * quantity) OVER (ORDER BY price, name) - price * quantity) AS money_left
 ```
 
 - `price * quantity` is the cost of buying the whole row.
 - `sum(...) OVER (ORDER BY price, name)` is a **window function**. A normal `sum` collapses all rows into one number. A window function adds a column and keeps every row. With `ORDER BY` it gives a running total: for each row, the sum of that row and every row before it.
-- Subtracting the row's own cost gives the total for the rows *before* it.
-- Sorting by `name` as well as `price` breaks ties. Eraser and Notebook both cost $5. Sorted by price alone, Postgres treats them as tied, puts them both in the running total at once, and gives them the same value. With `name` added, each row gets its own position. Which of two same-price items comes first does not change the count.
+- Subtracting the row's own cost gives what was spent on the rows *before* it, and `100 -` that is the money left. It goes negative once the budget is used up.
 
-### Outer query: items bought from each row, then the total
+### Step 3, `items_bought_per_product`, and the total
 
-Read this part from the inside out:
+Read it from the inside out:
 
 | Piece | Meaning |
 |-------|---------|
-| `100 - spent_before` | money left when we reach this row (can be negative) |
-| `greatest(0, ...)` | treat negative money as 0 |
+| `greatest(0, money_left)` | treat negative money as 0 |
 | `... / price` | how many of this item that money buys; dividing two integers rounds down |
 | `least(quantity, ...)` | but never more than are in stock |
-| `sum(...)` | add up the items bought from every row |
+| `sum(items_bought)` | add up the items bought from every row |
 | `coalesce(..., 0)` | `sum` of zero rows is `NULL` (no value); turn that into 0 |
-
-`FROM ( ... ) AS cheapest_first` lets the outer query read the inner query's result as if it were a table. Postgres requires the name (`cheapest_first`), but nothing else uses it.
 
 ### Why a partly bought row doesn't break the later rows
 
-`spent_before` assumes every earlier row was bought *in full*, including one that was only partly bought. That overstates what was actually spent, so it is fair to ask whether a later row misses out.
+`money_left` assumes every earlier row was bought *in full*, including one that was only partly bought. That understates the money actually left, so it is fair to ask whether a later row misses out.
 
-It doesn't. After the partly bought row, the money actually left is less than that row's price, or we could have bought one more. Every later row costs at least as much, so none of them is affordable anyway. The query gives them 0 because their `spent_before` is already above $100.
+It doesn't. After the partly bought row, the money actually left is less than that row's price, or we could have bought one more. Every later row costs at least as much, so none of them is affordable anyway. The query gives them 0 because their `money_left` is already below 0.
 
 ## Edge cases
 
@@ -86,11 +104,16 @@ It doesn't. After the partly bought row, the money actually left is less than th
 
 ## PostgreSQL 9.4 compatibility
 
-Everything used here (window functions, `least`, `greatest`, `coalesce`, subqueries in `FROM`) has been in Postgres since 8.4. The query was tested on 9.4.26.
+Everything used here (`WITH` steps, window functions, `least`, `greatest`, `coalesce`, `LIMIT`) has been in Postgres since 8.4. The query was tested on 9.4.26.
 
 ## Cost
 
-Postgres sorts the rows once for the window function: O(N log N) for N products. The rest is a single pass over the sorted rows. The task allows at most 100 rows, so this is instant. [TASK-04](TASK-04.md) asks what changes on very large tables.
+The task allows at most 100 rows, so any version is instant. On a big table, the work is in step 1:
+
+- Without an index, Postgres reads every row once but keeps only the 100 cheapest in memory as it goes (a "top-N heapsort"), instead of sorting the whole table.
+- With an index on `(price, name)`, it reads the first 100 entries of the index and stops, however big the table is.
+
+Steps 2 and 3 only ever see at most 100 rows. [`sql-performance.md`](sql-performance.md) (Task 4) has the measurements on a million-row table.
 
 ## Running it
 
