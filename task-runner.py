@@ -25,7 +25,7 @@ def run(*cmd):
 
 
 def task1(_args):
-    run(sys.executable, "task_1_and_2/solution.py")
+    run(sys.executable, "task_1_and_2/test_solution.py")
 
 
 def seed(args):
